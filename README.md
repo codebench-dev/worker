@@ -11,6 +11,14 @@ The worker handles lifecycle of an execution job.
   - `failed`
   - `done` + stdout/stderr
 
+## Requirements
+
+- The `firecracker` binary in the `PATH`
+- A rootfs in `../agent/rootfs.ext4` with the [agent](https://github.com/codebench-esgi/agent) installed and enabled at boot
+- A Linux kernel at `../../linux/vmlinux`.
+
+Both the rootfs and the kernel can be built with scripts in the linked repo.
+
 ## Demo
 
 Start Redis:
