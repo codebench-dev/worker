@@ -7,7 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func fillVMPool(ctx context.Context, WarmVMs chan<- RunningFirecracker) {
+func fillVMPool(ctx context.Context, WarmVMs chan<- runningFirecracker) {
 	for {
 		select {
 		case <-ctx.Done():

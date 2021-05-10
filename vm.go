@@ -39,7 +39,7 @@ func waitForVMToBoot(ctx context.Context, ip net.IP) error {
 	}
 }
 
-func (vm RunningFirecracker) shutDown() {
+func (vm runningFirecracker) shutDown() {
 	log.WithField("ip", vm.ip).Info("stopping")
 	vm.machine.StopVMM()
 	err := os.Remove(vm.machine.Cfg.SocketPath)

@@ -19,7 +19,7 @@ func (q jobQueue) getJob(ctx context.Context) ([]string, error) {
 }
 
 func (q jobQueue) setjobReceived(ctx context.Context, job benchJob) (int64, error) {
-	result, err := q.redis.RPush(ctx, job.Id, "received").Result()
+	result, err := q.redis.RPush(ctx, job.ID, "received").Result()
 
 	if err != nil {
 		log.WithError(err).Error("Failed to set job status in queue")
@@ -32,7 +32,7 @@ func (q jobQueue) setjobReceived(ctx context.Context, job benchJob) (int64, erro
 }
 
 func (q jobQueue) setjobRunning(ctx context.Context, job benchJob) (int64, error) {
-	result, err := q.redis.RPush(ctx, job.Id, "running").Result()
+	result, err := q.redis.RPush(ctx, job.ID, "running").Result()
 
 	if err != nil {
 		log.WithError(err).Error("Failed to set job status in queue")
@@ -45,7 +45,7 @@ func (q jobQueue) setjobRunning(ctx context.Context, job benchJob) (int64, error
 }
 
 func (q jobQueue) setjobFailed(ctx context.Context, job benchJob) (int64, error) {
-	result, err := q.redis.RPush(ctx, job.Id, "failed").Result()
+	result, err := q.redis.RPush(ctx, job.ID, "failed").Result()
 
 	if err != nil {
 		log.WithError(err).Error("Failed to set job status in queue")
@@ -58,7 +58,7 @@ func (q jobQueue) setjobFailed(ctx context.Context, job benchJob) (int64, error)
 }
 
 func (q jobQueue) setjobResult(ctx context.Context, job benchJob, res agentExecRes) (int64, error) {
-	result, err := q.redis.RPush(ctx, job.Id, "done", res.StdOut, res.StdErr).Result()
+	result, err := q.redis.RPush(ctx, job.ID, "done", res.StdOut, res.StdErr).Result()
 
 	if err != nil {
 		log.WithError(err).Error("Failed to set job status in queue")

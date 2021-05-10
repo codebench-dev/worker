@@ -11,7 +11,7 @@ import (
 )
 
 // Create a VMM with a given set of options and start the VM
-func createAndStartVM(ctx context.Context) (*RunningFirecracker, error) {
+func createAndStartVM(ctx context.Context) (*runningFirecracker, error) {
 	fcCfg, err := getFirecrackerConfig()
 	if err != nil {
 		log.Errorf("Error: %s", err)
@@ -75,7 +75,7 @@ func createAndStartVM(ctx context.Context) (*RunningFirecracker, error) {
 
 	log.WithField("ip", m.Cfg.NetworkInterfaces[0].StaticConfiguration.IPConfiguration.IPAddr.IP).Info("machine started")
 
-	return &RunningFirecracker{
+	return &runningFirecracker{
 		vmmCtx:    vmmCtx,
 		vmmCancel: vmmCancel,
 		machine:   m,

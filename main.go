@@ -18,7 +18,7 @@ import (
 )
 
 type benchJob struct {
-	Id      string `json:"id"`
+	ID      string `json:"id"`
 	Command string `json:"command"`
 }
 
@@ -32,7 +32,7 @@ type agentExecRes struct {
 	StdOut  string `json:"stdout"`
 }
 
-type RunningFirecracker struct {
+type runningFirecracker struct {
 	vmmCtx    context.Context
 	vmmCancel context.CancelFunc
 	machine   *firecracker.Machine
@@ -48,7 +48,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	WarmVMs := make(chan RunningFirecracker, 2)
+	WarmVMs := make(chan runningFirecracker, 2)
 
 	go fillVMPool(ctx, WarmVMs)
 	installSignalHandlers()
