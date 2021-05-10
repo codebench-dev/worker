@@ -10,9 +10,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Run a vmm with a given set of options
-func createVMM(ctx context.Context) (*RunningFirecracker, error) {
-
+// Create a VMM with a given set of options and start the VM
+func createAndStartVM(ctx context.Context) (*RunningFirecracker, error) {
 	fcCfg, err := getFirecrackerConfig()
 	if err != nil {
 		log.Errorf("Error: %s", err)
@@ -77,8 +76,8 @@ func createVMM(ctx context.Context) (*RunningFirecracker, error) {
 	log.WithField("ip", m.Cfg.NetworkInterfaces[0].StaticConfiguration.IPConfiguration.IPAddr.IP).Info("machine started")
 
 	return &RunningFirecracker{
-		ctx:       vmmCtx,
-		cancelCtx: vmmCancel,
+		vmmCtx:    vmmCtx,
+		vmmCancel: vmmCancel,
 		machine:   m,
 		ip:        m.Cfg.NetworkInterfaces[0].StaticConfiguration.IPConfiguration.IPAddr.IP,
 	}, nil

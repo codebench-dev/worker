@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/signal"
+	"path"
+	"strings"
 	"syscall"
 
 	firecracker "github.com/firecracker-microvm/firecracker-go-sdk"
@@ -30,20 +33,26 @@ type agentExecRes struct {
 }
 
 type RunningFirecracker struct {
-	ctx       context.Context
-	cancelCtx context.CancelFunc
+	vmmCtx    context.Context
+	vmmCancel context.CancelFunc
 	machine   *firecracker.Machine
 	ip        net.IP
 }
 
 var (
-	runningVMs map[string]RunningFirecracker = make(map[string]RunningFirecracker)
-	q          jobQueue
+	q jobQueue
 )
 
 func main() {
-	defer cleanup()
+	defer deleteVMMSockets()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	WarmVMs := make(chan RunningFirecracker, 2)
+
+	go fillVMPool(ctx, WarmVMs)
 	installSignalHandlers()
+	log.SetReportCaller(true)
 
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: "localhost:6378",
@@ -55,7 +64,7 @@ func main() {
 
 	for {
 		var job benchJob
-		result, err := q.getJob()
+		result, err := q.getJob(ctx)
 
 		if err != nil {
 			log.WithError(err).Error("Failed to get job from redis queue")
@@ -63,7 +72,23 @@ func main() {
 		}
 		json.Unmarshal([]byte(result[1]), &job)
 
-		go job.run()
+		go job.run(ctx, WarmVMs)
+	}
+}
+
+// TODO this isn't called for whatever reason
+func deleteVMMSockets() {
+	log.Debug("cc")
+	dir, err := ioutil.ReadDir(os.TempDir())
+	if err != nil {
+		log.WithError(err).Error("Failed to read directory")
+	}
+	for _, d := range dir {
+		log.WithField("d", d.Name()).Debug("considering")
+		if strings.Contains(d.Name(), fmt.Sprintf(".firecracker.sock-%d-", os.Getpid())) {
+			log.WithField("d", d.Name()).Debug("should delete")
+			os.Remove(path.Join([]string{"tmp", d.Name()}...))
+		}
 	}
 }
 
@@ -78,11 +103,11 @@ func installSignalHandlers() {
 			switch s := <-c; {
 			case s == syscall.SIGTERM || s == os.Interrupt:
 				log.Printf("Caught signal: %s, requesting clean shutdown", s.String())
-				cleanup()
+				deleteVMMSockets()
 				os.Exit(0)
 			case s == syscall.SIGQUIT:
 				log.Printf("Caught signal: %s, forcing shutdown", s.String())
-				cleanup()
+				deleteVMMSockets()
 				os.Exit(0)
 			}
 		}

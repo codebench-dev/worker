@@ -9,45 +9,35 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (job benchJob) run() {
+func (job benchJob) run(ctx context.Context, WarmVMs <-chan RunningFirecracker) {
 	log.WithField("job", job).Info("Handling job")
 
-	res, err := q.setjobReceived(job)
+	res, err := q.setjobReceived(ctx, job)
 	if err != nil && res != 1 {
-		q.setjobFailed(job)
+		q.setjobFailed(ctx, job)
 		return
 	}
 
-	vm, err := createVMM(context.Background())
-	if err != nil {
-		log.Error("failed to creat VMM")
-		q.setjobFailed(job)
-		return
-	}
+	// Get a ready-to-use microVM from the pool
+	vm := <-WarmVMs
 
-	// store in global map to be able to cleanup from outside the goroutine
-	runningVMs[vm.ip.String()] = *vm
-
+	// Defer cleanup of VM and VMM
 	go func() {
-		defer vm.cancelCtx()
-		vm.machine.Wait(vm.ctx)
+		defer vm.vmmCancel()
+		vm.machine.Wait(vm.vmmCtx)
 	}()
-
 	defer vm.shutDown()
-	defer delete(runningVMs, vm.ip.String())
-
-	waitForVMToBoot(vm.ip)
 
 	json_data, err := json.Marshal(agentExecReq{Command: job.Command})
 	if err != nil {
 		log.WithError(err).Error("Failed to marshal JSON request")
-		q.setjobFailed(job)
+		q.setjobFailed(ctx, job)
 		return
 	}
 
-	res, err = q.setjobRunning(job)
+	res, err = q.setjobRunning(ctx, job)
 	if err != nil && res != 1 {
-		q.setjobFailed(job)
+		q.setjobFailed(ctx, job)
 		return
 	}
 
@@ -55,15 +45,15 @@ func (job benchJob) run() {
 	httpRes, err := http.Post("http://"+vm.ip.String()+":8080/exec", "application/json", bytes.NewBuffer(json_data))
 	if err != nil {
 		log.WithError(err).Error("Failed to request execution to agent")
-		q.setjobFailed(job)
+		q.setjobFailed(ctx, job)
 		return
 	}
 
 	json.NewDecoder(httpRes.Body).Decode(&agentRes)
 	log.WithField("result", agentRes).Info("Job execution finished")
 
-	res, err = q.setjobResult(job, agentRes)
+	res, err = q.setjobResult(ctx, job, agentRes)
 	if err != nil && res != 1 {
-		q.setjobFailed(job)
+		q.setjobFailed(ctx, job)
 	}
 }

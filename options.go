@@ -42,7 +42,7 @@ func getSocketPath() string {
 	filename := strings.Join([]string{
 		".firecracker.sock",
 		strconv.Itoa(os.Getpid()),
-		strconv.Itoa(rand.Intn(1000))},
+		strconv.Itoa(rand.Intn(10000))},
 		"-",
 	)
 	dir := os.TempDir()
