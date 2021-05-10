@@ -18,17 +18,22 @@ import (
 
 type benchJob struct {
 	ID      string `json:"id"`
+	Type    string `json:"type"`
 	Command string `json:"command"`
+	Code    string `json:"code"`
 }
 
 type agentExecReq struct {
 	Command string `json:"command"`
 }
 
+type agentRunReq struct {
+	Code string `json:"code"`
+}
+
 type agentExecRes struct {
-	Command string `json:"command"`
-	StdErr  string `json:"stderr"`
-	StdOut  string `json:"stdout"`
+	StdErr string `json:"stderr"`
+	StdOut string `json:"stdout"`
 }
 
 type runningFirecracker struct {
