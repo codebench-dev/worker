@@ -8,17 +8,17 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type jobQueue struct {
+type jobQueueRedis struct {
 	redis *redis.Client
 }
 
-func (q jobQueue) getJob(ctx context.Context) ([]string, error) {
+func (q jobQueueRedis) getJob(ctx context.Context) ([]string, error) {
 	result, err := q.redis.BLPop(ctx, 0*time.Second, "jobs").Result()
 
 	return result, err
 }
 
-func (q jobQueue) setjobReceived(ctx context.Context, job benchJob) (int64, error) {
+func (q jobQueueRedis) setjobReceived(ctx context.Context, job benchJob) (int64, error) {
 	result, err := q.redis.RPush(ctx, job.ID, "received").Result()
 
 	if err != nil {
@@ -31,7 +31,7 @@ func (q jobQueue) setjobReceived(ctx context.Context, job benchJob) (int64, erro
 	return result, err
 }
 
-func (q jobQueue) setjobRunning(ctx context.Context, job benchJob) (int64, error) {
+func (q jobQueueRedis) setjobRunning(ctx context.Context, job benchJob) (int64, error) {
 	result, err := q.redis.RPush(ctx, job.ID, "running").Result()
 
 	if err != nil {
@@ -44,7 +44,7 @@ func (q jobQueue) setjobRunning(ctx context.Context, job benchJob) (int64, error
 	return result, err
 }
 
-func (q jobQueue) setjobFailed(ctx context.Context, job benchJob) (int64, error) {
+func (q jobQueueRedis) setjobFailed(ctx context.Context, job benchJob) (int64, error) {
 	result, err := q.redis.RPush(ctx, job.ID, "failed").Result()
 
 	if err != nil {
@@ -57,7 +57,7 @@ func (q jobQueue) setjobFailed(ctx context.Context, job benchJob) (int64, error)
 	return result, err
 }
 
-func (q jobQueue) setjobResult(ctx context.Context, job benchJob, res agentExecRes) (int64, error) {
+func (q jobQueueRedis) setjobResult(ctx context.Context, job benchJob, res agentExecRes) (int64, error) {
 	result, err := q.redis.RPush(ctx, job.ID, "done", res.StdOut, res.StdErr).Result()
 
 	if err != nil {

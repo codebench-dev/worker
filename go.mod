@@ -24,6 +24,7 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
+	github.com/streadway/amqp v1.0.0 // indirect
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indirect
 	go.opentelemetry.io/otel v0.20.0 // indirect
 	golang.org/x/net v0.0.0-20210504132125-bbd867fde50d // indirect

@@ -12,9 +12,15 @@ import (
 func (job benchJob) run(ctx context.Context, WarmVMs <-chan runningFirecracker) {
 	log.WithField("job", job).Info("Handling job")
 
-	res, err := q.setjobReceived(ctx, job)
-	if err != nil && res != 1 {
-		q.setjobFailed(ctx, job)
+	statusQueue, err := q.getQueueForJob(ctx, job)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to get status queue")
+		return
+	}
+
+	err = q.setjobReceived(ctx, statusQueue, job)
+	if err != nil {
+		q.setjobFailed(ctx, statusQueue, job)
 		return
 	}
 
@@ -31,13 +37,13 @@ func (job benchJob) run(ctx context.Context, WarmVMs <-chan runningFirecracker) 
 	reqJSON, err := json.Marshal(agentExecReq{Command: job.Command})
 	if err != nil {
 		log.WithError(err).Error("Failed to marshal JSON request")
-		q.setjobFailed(ctx, job)
+		q.setjobFailed(ctx, statusQueue, job)
 		return
 	}
 
-	res, err = q.setjobRunning(ctx, job)
-	if err != nil && res != 1 {
-		q.setjobFailed(ctx, job)
+	err = q.setjobRunning(ctx, statusQueue, job)
+	if err != nil {
+		q.setjobFailed(ctx, statusQueue, job)
 		return
 	}
 
@@ -45,15 +51,15 @@ func (job benchJob) run(ctx context.Context, WarmVMs <-chan runningFirecracker) 
 	httpRes, err := http.Post("http://"+vm.ip.String()+":8080/exec", "application/json", bytes.NewBuffer(reqJSON))
 	if err != nil {
 		log.WithError(err).Error("Failed to request execution to agent")
-		q.setjobFailed(ctx, job)
+		q.setjobFailed(ctx, statusQueue, job)
 		return
 	}
 
 	json.NewDecoder(httpRes.Body).Decode(&agentRes)
 	log.WithField("result", agentRes).Info("Job execution finished")
 
-	res, err = q.setjobResult(ctx, job, agentRes)
-	if err != nil && res != 1 {
-		q.setjobFailed(ctx, job)
+	err = q.setjobResult(ctx, statusQueue, job, agentRes)
+	if err != nil {
+		q.setjobFailed(ctx, statusQueue, job)
 	}
 }
