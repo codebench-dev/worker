@@ -16,11 +16,7 @@ jobs:
 
     - name: Run build
       run: |
-        go get github.com/firecracker-microvm/firecracker-go-sdk@v0.22.0
         go build .
 
-    - name: Run vet & lint
-      run: |
-        go get -u golang.org/x/lint/golint
-        go vet .
-        golint .
+    - name: Run go vet
+      run: go vet .
