@@ -67,18 +67,19 @@ func newJobQueue(endpoint string) jobQueue {
 	}
 }
 
-func (q jobQueue) getQueueForJob(ctx context.Context, job benchJob) (amqp.Queue, error) {
-	return q.ch.QueueDeclare(
-		"job_status_"+job.ID, // name
-		false,                // durable
-		false,                // delete when unused
-		false,                // exclusive
-		false,                // no-wait
-		nil,                  // arguments
+func (q jobQueue) getQueueForJob(ctx context.Context, job benchJob) error {
+	return q.ch.ExchangeDeclare(
+		"job_status", // name
+		"direct",     // type
+		false,        // durable
+		false,        // auto-deleted
+		false,        // internal
+		false,        // no-wait
+		nil,          // arguments
 	)
 }
 
-func (q jobQueue) setjobStatus(ctx context.Context, queue amqp.Queue, job benchJob, status string) error {
+func (q jobQueue) setjobStatus(ctx context.Context, job benchJob, status string) error {
 	log.WithField("status", status).Info("Set job status")
 	jobStatus := &jobStatus{
 		ID:      job.ID,
@@ -92,10 +93,10 @@ func (q jobQueue) setjobStatus(ctx context.Context, queue amqp.Queue, job benchJ
 		return err
 	}
 	err = q.ch.Publish(
-		"",                   // exchange
-		"job_status_"+job.ID, // routing key
-		false,                // mandatory
-		false,                // immediate
+		"job_status", // exchange
+		job.ID,       // routing key
+		false,        // mandatory
+		false,        // immediate
 		amqp.Publishing{
 			ContentType: "text/plain",
 			Body:        b,
@@ -103,18 +104,18 @@ func (q jobQueue) setjobStatus(ctx context.Context, queue amqp.Queue, job benchJ
 	return err
 }
 
-func (q jobQueue) setjobReceived(ctx context.Context, queue amqp.Queue, job benchJob) error {
-	return q.setjobStatus(ctx, queue, job, "received")
+func (q jobQueue) setjobReceived(ctx context.Context, job benchJob) error {
+	return q.setjobStatus(ctx, job, "received")
 }
 
-func (q jobQueue) setjobRunning(ctx context.Context, queue amqp.Queue, job benchJob) error {
-	return q.setjobStatus(ctx, queue, job, "running")
+func (q jobQueue) setjobRunning(ctx context.Context, job benchJob) error {
+	return q.setjobStatus(ctx, job, "running")
 }
 
-func (q jobQueue) setjobFailed(ctx context.Context, queue amqp.Queue, job benchJob) error {
-	return q.setjobStatus(ctx, queue, job, "failed")
+func (q jobQueue) setjobFailed(ctx context.Context, job benchJob) error {
+	return q.setjobStatus(ctx, job, "failed")
 }
-func (q jobQueue) setjobResult(ctx context.Context, queue amqp.Queue, job benchJob, res agentExecRes) error {
+func (q jobQueue) setjobResult(ctx context.Context, job benchJob, res agentExecRes) error {
 	jobStatus := &jobStatus{
 		ID:      job.ID,
 		Status:  "done",
@@ -129,10 +130,10 @@ func (q jobQueue) setjobResult(ctx context.Context, queue amqp.Queue, job benchJ
 		return err
 	}
 	err = q.ch.Publish(
-		"",                   // exchange
-		"job_status_"+job.ID, // routing key
-		false,                // mandatory
-		false,                // immediate
+		"job_status", // exchange
+		job.ID,       // routing key
+		false,        // mandatory
+		false,        // immediate
 		amqp.Publishing{
 			ContentType: "text/plain",
 			Body:        b,
