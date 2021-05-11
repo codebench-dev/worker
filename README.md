@@ -2,26 +2,63 @@
 
 The worker handles lifecycle of an execution job.
 
-- Get jobs from a Redis queues
-- Fire up a Firecracker microVM for each job
-- Run job trough the [agent](https://github.com/codebench-esgi/agent)
-- Update back a Redis queue for each job during the process, with the following statuses:
-  - `received`
-  - `running`
-  - `failed`
-  - `done` + stdout/stderr
+- Get jobs from a RabbitMQ queue
+- Keep a pool of microVMs warm, and send new jobs to pre-booted VM to reduce overhead
+- Run jobs trough the [agent](https://github.com/codebench-esgi/agent)
+- Update back an ephemeral RabbitMQ queue for each job with status and result
 
 ## Requirements
 
 - The `firecracker` binary in the `PATH`
 - A rootfs in `../agent/rootfs.ext4` with the [agent](https://github.com/codebench-esgi/agent) installed and enabled at boot
 - A Linux kernel at `../../linux/vmlinux`.
+- CNI plugins and config (see below)
 
 Both the rootfs and the kernel can be built with scripts in the linked repo.
 
+### CNI
+
+In `/etc/cni/conf.d/fcnet.conflist`:
+
+```json
+{
+  "name": "fcnet",
+  "cniVersion": "0.4.0",
+  "plugins": [
+    {
+      "type": "ptp",
+      "ipMasq": true,
+      "ipam": {
+        "type": "host-local",
+        "subnet": "192.168.127.0/24",
+        "resolvConf": "/etc/resolv.conf"
+      }
+    },
+    {
+      "type": "firewall"
+    },
+    {
+      "type": "tc-redirect-tap"
+    }
+  ]
+}
+```
+
+You should also have the required CNI plugins binaries in `/opt/cni/bin`:
+
+From: https://github.com/awslabs/tc-redirect-tap
+
+- firewall
+- host-local
+- ptp
+
+From: https://github.com/awslabs/tc-redirect-tap
+
+- tc-redirect-tap
+
 ## Demo
 
-Start Redis:
+Start RabbitMQ:
 
 ```sh
 docker-compose up -d
@@ -31,47 +68,94 @@ Start the worker:
 
 ```
 » go run
-Waiting for jobs on redis job queue
 ```
 
-Add a job to a Redis list (here, `uname -a`)
+Let's add a job to compile and run this program:
 
-```
-127.0.0.1:6378> RPUSH jobs '{"id":"666", "command": "uname -a"}'
-(integer) 1
-```
+```c
+#include <stdio.h>
 
-The worker gets the job, starts a goroutine to handle it:
-
-```
-INFO[0014] Handling job job="{666 uname -a}"
-INFO[0014] Called startVMM(), setting up a VMM on /tmp/.firecracker.sock-2826742-81
-INFO[0014] VMM logging disabled.
-INFO[0014] VMM metrics disabled.
-INFO[0014] refreshMachineConfiguration: [GET /machine-config][200] getMachineConfigurationOK &{CPUTemplate:Uninitialized HtEnabled:0xc00051e25b MemSizeMib:0xc00051e250 VcpuCount:0xc00051e248}
-INFO[0014] PutGuestBootSource: [PUT /boot-source][204] putGuestBootSourceNoContent
-INFO[0014] Attaching drive ../agent/rootfs.ext4, slot 1, root true.
-INFO[0014] Attached drive ../agent/rootfs.ext4: [PUT /drives/{drive_id}][204] putGuestDriveByIdNoContent
-INFO[0014] Attaching NIC tap0 (hwaddr 3e:78:01:d3:e9:03) at index 1
-2021-05-06T00:17:45.019283004 [anonymous-instance:WARN:vmm/src/lib.rs:571] Could not add stdin event to epoll. Os { code: 1, kind: PermissionDenied, message: "Operation not permitted" }
-INFO[0014] startInstance successful: [PUT /actions][204] createSyncActionNoContent
-INFO[0014] machine started ip=192.168.127.83
-INFO[0019] Job execution finished result="{uname -a Linux 192.168.127.83 5.9.0 #1 SMP Sun May 2 19:10:27 UTC 2021 x86_64 Linux\n}"
-INFO[0019] stopping ip=192.168.127.83
-WARN[0019] firecracker exited: signal: terminated
+int main() {
+   printf("Hello, World!");
+   return 0;
+}
 ```
 
-Done! The job has been handled, the microVM has been shut down and the job output has been published to redis. The output here is `Linux 192.168.127.83 5.9.0 #1 SMP Sun May 2 19:10:27 UTC 2021 x86_64 Linux`.
+We will send this job:
 
-Here's what happening on Redis during that time:
+```json
+{
+  "id": "666",
+  "type": "code",
+  "code": "#include <stdio.h>\r\nint main() {\r\n   printf(\"Hello, World!\");\r\n   return 0;\r\n}"
+}
+```
+
+This is the JSON request for RabbitMQ:
+
+```json
+{
+  "routing_key": "jobs",
+  "properties": {},
+  "payload": "{\"id\":\"666\", \"type\": \"code\", \"code\":\"#include <stdio.h>\\r\\nint main() {\\r\\n   \\/\\/ printf() displays the string inside quotation\\r\\n   printf(\\\"Hello, World!\\\");\\r\\n   return 0;\\r\\n}\"}\r\n",
+  "payload_encoding": "string"
+}
+```
+
+Let's send it:
+
+```sh
+» curl 'http://localhost:15672/api/exchanges/%2F/amq.default/publish' -u admin:admin -d '@req.json'
+{"routed":true}
+```
+
+The worker gets the job, gets a microVM from the pool, and handles the job:
 
 ```
-127.0.0.1:6378> MONITOR
-OK
-1620260250.387595 [0 192.168.16.1:59124] "blpop" "jobs" "0"
-1620260264.685236 [0 192.168.16.1:51044] "RPUSH" "jobs" "{\"id\":\"666\", \"command\": \"uname -a\"}"
-1620260264.686254 [0 192.168.16.1:59124] "blpop" "jobs" "0"
-1620260264.688423 [0 192.168.16.1:37144] "rpush" "666" "received"
-1620260270.027252 [0 192.168.16.1:37144] "rpush" "666" "running"
-1620260270.063586 [0 192.168.16.1:37144] "rpush" "666" "done" "Linux 192.168.127.83 5.9.0 #1 SMP Sun May 2 19:10:27 UTC 2021 x86_64 Linux\n" ""
+INFO[0066]/root/codebench/worker/main.go:67 main.main() Received a message: {"id":"666", "type": "code", "code":"#include <stdio.h>\r\ni t main() {\r\n   \/\/ printf() displays the string inside quotation\r\n   printf(\"Hello, World!\");\r\n   return 0;\r\n}"}
+INFO[0066]/root/codebench/worker/job.go:13 main.benchJob.run() Handling job                                  job="{666 code  #include <stdio.h>\r\nint main() {\r\n   // printf() displays the string inside quotation\r\n   printf(\"Hello, World!\");\r\n   return 0;\r\n}}"
+INFO[0066]/root/codebench/worker/job_queue_rabbitmq.go:82 main.jobQueue.setjobStatus() Set job status                                status=received
+INFO[0066]/root/codebench/worker/job_queue_rabbitmq.go:82 main.jobQueue.setjobStatus() Set job status                                status=running
+INFO[0066]/root/codebench/worker/job.go:88 main.benchJob.run() Job execution finished                        result="{ Hello, World!}"
+INFO[0066]/root/codebench/worker/job_queue_rabbitmq.go:125 main.jobQueue.setjobResult() Set job result                                jobStatus="&{666 done   Hello, World!}"
+INFO[0066]/root/codebench/worker/vm.go:43 main.runningFirecracker.shutDown() stopping                                      ip=192.168.127.6
+WARN[0066] firecracker exited: signal: terminated
+```
+
+At the same time, a new VM has been added to the missing spot in the pool.
+
+Let's check RabbitMQ:
+
+```
+» docker-compose exec rabbitmq rabbitmqadmin -u admin -p admin list queues
++----------------+----------+
+|      name      | messages |
++----------------+----------+
+| job_status_666 | 3        |
+| jobs           | 0        |
++----------------+----------+
+```
+
+We now have a queue corresponding to the ID of the job, with message in it:
+
+```
+» docker-compose exec rabbitmq rabbitmqadmin -u admin -p admin get queue=job_status_666 count=3 ackmode=ack_requeue_false
++----------------+----------+---------------+--------------------------------------------------------------------------------+---------------+------------------+-------------+
+|  routing_key   | exchange | message_count |                                    payload                                     | payload_bytes | payload_encoding | redelivered |
++----------------+----------+---------------+--------------------------------------------------------------------------------+---------------+------------------+-------------+
+| job_status_666 |          | 2             | {"id":"666","status":"received","stderr":"","stdout":""}          | 69            | string           | False       |
+| job_status_666 |          | 1             | {"id":"666","status":"running","stderr":"","stdout":""}           | 68            | string           | False       |
+| job_status_666 |          | 0             | {"id":"666","status":"done","stderr":"","stdout":"Hello, World!"} | 78            | string           | False       |
++----------------+----------+---------------+--------------------------------------------------------------------------------+---------------+------------------+-------------+
+```
+
+Our C program has been successfully compiled and executed!
+
+```json
+{
+  "id": "666",
+  "status": "done",
+  "stderr": "",
+  "stdout": "Hello, World!"
+}
 ```
