@@ -1,11 +1,6 @@
 version: '3.2'
 
 services:
-  redis:
-    image: 'redis:6.2.3'
-    ports:
-      - '127.0.0.1:6378:6379'
-
   rabbitmq:
     image: rabbitmq:3-management-alpine
     environment:
