@@ -13,9 +13,11 @@ import (
 
 // Converts options to a usable firecracker config
 func getFirecrackerConfig() (firecracker.Config, error) {
+	socket := getSocketPath()
 	return firecracker.Config{
-		SocketPath:      getSocketPath(),
+		SocketPath:      socket,
 		KernelImagePath: "../../linux/vmlinux",
+		// LogPath:         fmt.Sprintf("%s.log", socket),
 		Drives: []models.Drive{{
 			DriveID: firecracker.String("1"),
 			// TODO: copy base rootfs and use a temp roots per VM

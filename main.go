@@ -24,10 +24,12 @@ type benchJob struct {
 }
 
 type agentExecReq struct {
+	ID      string `json:"id"`
 	Command string `json:"command"`
 }
 
 type agentRunReq struct {
+	ID   string `json:"id"`
 	Code string `json:"code"`
 }
 
@@ -52,7 +54,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	WarmVMs := make(chan runningFirecracker, 10)
+	WarmVMs := make(chan runningFirecracker, 1)
 
 	go fillVMPool(ctx, WarmVMs)
 	installSignalHandlers()

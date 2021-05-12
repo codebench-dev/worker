@@ -37,14 +37,20 @@ func (job benchJob) run(ctx context.Context, WarmVMs <-chan runningFirecracker) 
 	var reqJSON []byte
 	switch job.Type {
 	case "command":
-		reqJSON, err = json.Marshal(agentExecReq{Command: job.Command})
+		reqJSON, err = json.Marshal(agentExecReq{
+			ID:      job.ID,
+			Command: job.Command,
+		})
 		if err != nil {
 			log.WithError(err).Error("Failed to marshal JSON request")
 			q.setjobFailed(ctx, job)
 			return
 		}
 	case "code":
-		reqJSON, err = json.Marshal(agentRunReq{Code: job.Code})
+		reqJSON, err = json.Marshal(agentRunReq{
+			ID:   job.ID,
+			Code: job.Code,
+		})
 		if err != nil {
 			log.WithError(err).Error("Failed to marshal JSON request")
 			q.setjobFailed(ctx, job)
