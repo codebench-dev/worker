@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -17,7 +18,7 @@ func getFirecrackerConfig() (firecracker.Config, error) {
 	return firecracker.Config{
 		SocketPath:      socket,
 		KernelImagePath: "../../linux/vmlinux",
-		// LogPath:         fmt.Sprintf("%s.log", socket),
+		LogPath:         fmt.Sprintf("%s.log", socket),
 		Drives: []models.Drive{{
 			DriveID: firecracker.String("1"),
 			// TODO: copy base rootfs and use a temp roots per VM
