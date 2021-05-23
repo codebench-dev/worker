@@ -1,18 +1,54 @@
-name: Release workflow
+name: Push workflow
 
-on:
-  release:
-    types: [created]
+on: push
 
 jobs:
-  release-linux-amd64:
-    name: release linux/amd64
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Publish binaries to release
-        uses: wangyoucao577/go-release-action@v1.17
+      - name: Setup Go
+        uses: actions/setup-go@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          goos: linux
-          goarch: amd64
+          go-version: '1.16'
+      - name: Run build
+        run: |
+          go build .
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.16'
+      - name: Run go vet
+        run: go vet .
+
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Lint Commit
+        uses: wagoid/commitlint-github-action@v3
+
+  release:
+    name: Publish new release
+    needs: [build, lint, commitlint]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 14
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+        run: npx semantic-release
