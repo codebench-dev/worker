@@ -13,13 +13,13 @@ import (
 	"syscall"
 
 	firecracker "github.com/firecracker-microvm/firecracker-go-sdk"
+	"github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
 )
 
 type benchJob struct {
 	ID      string `json:"id"`
-	Type    string `json:"type"`
-	Command string `json:"command"`
+	Variant string `json:"variant"`
 	Code    string `json:"code"`
 }
 
@@ -29,8 +29,9 @@ type agentExecReq struct {
 }
 
 type agentRunReq struct {
-	ID   string `json:"id"`
-	Code string `json:"code"`
+	ID      string `json:"id"`
+	Variant string `json:"variant"`
+	Code    string `json:"code"`
 }
 
 type agentExecRes struct {
@@ -46,7 +47,7 @@ type runningFirecracker struct {
 }
 
 var (
-	q jobQueue
+	q jobQueueRedis
 )
 
 func main() {
@@ -54,24 +55,32 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	WarmVMs := make(chan runningFirecracker, 1)
+	WarmVMs := make(chan runningFirecracker, 0)
 
 	go fillVMPool(ctx, WarmVMs)
 	installSignalHandlers()
 	log.SetReportCaller(true)
 
-	q = newJobQueue("amqp://admin:admin@localhost:5672/")
-	defer q.ch.Close()
-	defer q.conn.Close()
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: "localhost:6378",
+	})
 
-	log.Info("Waiting for RabbitMQ jobs...")
-	for d := range q.jobs {
-		log.Printf("Received a message: %s", d.Body)
+	q = jobQueueRedis{redis: redisClient}
 
+	fmt.Println("Waiting for jobs on redis job queue")
+
+	for {
 		var job benchJob
-		err := json.Unmarshal([]byte(d.Body), &job)
+		result, err := q.getJob(ctx)
+
 		if err != nil {
-			log.WithError(err).Error("Received invalid job")
+			log.WithError(err).Error("Failed to get job from redis queue")
+			continue
+		}
+		err = json.Unmarshal([]byte(result[1]), &job)
+		if err != nil || job.ID == "" || job.Code == "" || job.Variant == "" {
+			log.WithError(err).WithField("job", result[1]).Error("Failed to unmarshal job")
+			q.setjobFailed(ctx, job)
 			continue
 		}
 

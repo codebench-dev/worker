@@ -82,11 +82,10 @@ func (q jobQueue) getQueueForJob(ctx context.Context, job benchJob) error {
 func (q jobQueue) setjobStatus(ctx context.Context, job benchJob, status string) error {
 	log.WithField("status", status).Info("Set job status")
 	jobStatus := &jobStatus{
-		ID:      job.ID,
-		Status:  status,
-		Command: job.Command,
-		StdErr:  "",
-		StdOut:  "",
+		ID:     job.ID,
+		Status: status,
+		StdErr: "",
+		StdOut: "",
 	}
 	b, err := json.Marshal(jobStatus)
 	if err != nil {
@@ -117,11 +116,10 @@ func (q jobQueue) setjobFailed(ctx context.Context, job benchJob) error {
 }
 func (q jobQueue) setjobResult(ctx context.Context, job benchJob, res agentExecRes) error {
 	jobStatus := &jobStatus{
-		ID:      job.ID,
-		Status:  "done",
-		Command: job.Command,
-		StdErr:  res.StdErr,
-		StdOut:  res.StdOut,
+		ID:     job.ID,
+		Status: "done",
+		StdErr: res.StdErr,
+		StdOut: res.StdOut,
 	}
 	log.WithField("jobStatus", jobStatus).Info("Set job result")
 
