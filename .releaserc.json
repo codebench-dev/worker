@@ -5,6 +5,19 @@
     "plugins": [
         "@semantic-release/commit-analyzer",
         "@semantic-release/release-notes-generator",
-        "@semantic-release/github"
+        [
+            "@semantic-release/github",
+            {
+                "successComment": false,
+                "releasedLabels": false,
+                "assets": [
+                    {
+                        "path": "release.tar.gz",
+                        "name": "worker-${nextRelease.gitTag}-linux-amd64.tar.gz",
+                        "label": "worker-${nextRelease.gitTag}-linux-amd64.tar.gz"
+                    }
+                ]
+            }
+        ]
     ]
 }
