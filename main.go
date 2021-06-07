@@ -13,13 +13,13 @@ import (
 	"syscall"
 
 	firecracker "github.com/firecracker-microvm/firecracker-go-sdk"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
 type benchJob struct {
 	ID      string `json:"id"`
-	Type    string `json:"type"`
-	Command string `json:"command"`
+	Variant string `json:"variant"`
 	Code    string `json:"code"`
 }
 
@@ -29,8 +29,9 @@ type agentExecReq struct {
 }
 
 type agentRunReq struct {
-	ID   string `json:"id"`
-	Code string `json:"code"`
+	ID      string `json:"id"`
+	Variant string `json:"variant"`
+	Code    string `json:"code"`
 }
 
 type agentExecRes struct {
@@ -60,9 +61,19 @@ func main() {
 	installSignalHandlers()
 	log.SetReportCaller(true)
 
-	q = newJobQueue("amqp://admin:admin@localhost:5672/")
+	rabbitMQURL := os.Getenv("RABBITMQ_URL")
+	if len(rabbitMQURL) == 0 {
+		logrus.Fatal("Missing RABBITMQ_URL env variable")
+	}
+	q = newJobQueue(rabbitMQURL)
 	defer q.ch.Close()
 	defer q.conn.Close()
+
+	err := q.getQueueForJob(ctx)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to get status queue")
+		return
+	}
 
 	log.Info("Waiting for RabbitMQ jobs...")
 	for d := range q.jobs {
