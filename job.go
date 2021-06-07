@@ -12,13 +12,7 @@ import (
 func (job benchJob) run(ctx context.Context, WarmVMs <-chan runningFirecracker) {
 	log.WithField("job", job).Info("Handling job")
 
-	err := q.getQueueForJob(ctx, job)
-	if err != nil {
-		log.WithError(err).Fatal("Failed to get status queue")
-		return
-	}
-
-	err = q.setjobReceived(ctx, job)
+	err := q.setjobReceived(ctx, job)
 	if err != nil {
 		q.setjobFailed(ctx, job)
 		return
@@ -35,27 +29,16 @@ func (job benchJob) run(ctx context.Context, WarmVMs <-chan runningFirecracker) 
 	defer vm.shutDown()
 
 	var reqJSON []byte
-	switch job.Type {
-	case "command":
-		reqJSON, err = json.Marshal(agentExecReq{
-			ID:      job.ID,
-			Command: job.Command,
-		})
-		if err != nil {
-			log.WithError(err).Error("Failed to marshal JSON request")
-			q.setjobFailed(ctx, job)
-			return
-		}
-	case "code":
-		reqJSON, err = json.Marshal(agentRunReq{
-			ID:   job.ID,
-			Code: job.Code,
-		})
-		if err != nil {
-			log.WithError(err).Error("Failed to marshal JSON request")
-			q.setjobFailed(ctx, job)
-			return
-		}
+
+	reqJSON, err = json.Marshal(agentRunReq{
+		ID:      job.ID,
+		Variant: job.Variant,
+		Code:    job.Code,
+	})
+	if err != nil {
+		log.WithError(err).Error("Failed to marshal JSON request")
+		q.setjobFailed(ctx, job)
+		return
 	}
 
 	err = q.setjobRunning(ctx, job)
@@ -65,44 +48,26 @@ func (job benchJob) run(ctx context.Context, WarmVMs <-chan runningFirecracker) 
 	}
 
 	var httpRes *http.Response
-	var res agentExecRes
+	var agentRes agentExecRes
 
-	switch job.Type {
-	case "command":
-		httpRes, err = http.Post("http://"+vm.ip.String()+":8080/exec", "application/json", bytes.NewBuffer(reqJSON))
-		if err != nil || httpRes.StatusCode != 200 {
-			log.WithError(err).Error("Failed to request execution to agent")
-			q.setjobFailed(ctx, job)
-			return
-		}
-		json.NewDecoder(httpRes.Body).Decode(&res)
-		log.WithField("result", res).Info("Job execution finished")
+	// FIXME
+	httpRes, err = http.Post("http://"+vm.ip.String()+":8080/run/python", "application/json", bytes.NewBuffer(reqJSON))
+	if err != nil {
+		log.WithError(err).Error("Failed to request execution to agent")
+		q.setjobFailed(ctx, job)
+		return
+	}
+	json.NewDecoder(httpRes.Body).Decode(&agentRes)
+	log.WithField("result", agentRes).Info("Job execution finished")
+	if httpRes.StatusCode != 200 {
+		log.WithField("res", agentRes).Error("Failed to compile and run code")
+		q.setjobFailed(ctx, job)
+		return
+	}
 
-		err = q.setjobResult(ctx, job, res)
-		if err != nil {
-			q.setjobFailed(ctx, job)
-		}
-
-	case "code":
-		httpRes, err = http.Post("http://"+vm.ip.String()+":8080/run/c", "application/json", bytes.NewBuffer(reqJSON))
-		if err != nil {
-			log.WithError(err).Error("Failed to request execution to agent")
-			q.setjobFailed(ctx, job)
-			return
-		}
-		json.NewDecoder(httpRes.Body).Decode(&res)
-		log.WithField("result", res).Info("Job execution finished")
-
-		if httpRes.StatusCode != 200 {
-			log.WithField("res", res).Error("Failed to compile and run code")
-			q.setjobFailed(ctx, job)
-			return
-		}
-
-		err = q.setjobResult(ctx, job, res)
-		if err != nil {
-			q.setjobFailed(ctx, job)
-		}
+	err = q.setjobResult(ctx, job, agentRes)
+	if err != nil {
+		q.setjobFailed(ctx, job)
 	}
 
 }
