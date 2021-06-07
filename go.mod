@@ -13,7 +13,7 @@ require (
 	github.com/go-openapi/strfmt v0.20.1 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/go-openapi/validate v0.20.2 // indirect
-	github.com/go-redis/redis/v8 v8.8.3
+	github.com/go-redis/redis/v8 v8.10.0
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
