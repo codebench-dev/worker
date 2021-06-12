@@ -16,10 +16,11 @@ type jobQueue struct {
 }
 
 type jobStatus struct {
-	ID     string `json:"id"`
-	Status string `json:"status"`
-	StdErr string `json:"stderr"`
-	StdOut string `json:"stdout"`
+	ID           string `json:"id"`
+	Status       string `json:"status"`
+	StdErr       string `json:"stderr"`
+	StdOut       string `json:"stdout"`
+	ExecDuration int    `json:"exec_duration"`
 }
 
 func newJobQueue(endpoint string) jobQueue {
@@ -137,10 +138,11 @@ func (q jobQueue) setjobFailed(ctx context.Context, job benchJob) error {
 }
 func (q jobQueue) setjobResult(ctx context.Context, job benchJob, res agentExecRes) error {
 	jobStatus := &jobStatus{
-		ID:     job.ID,
-		Status: "done",
-		StdErr: res.StdErr,
-		StdOut: res.StdOut,
+		ID:           job.ID,
+		Status:       "done",
+		StdErr:       res.StdErr,
+		StdOut:       res.StdOut,
+		ExecDuration: res.ExecDuration,
 	}
 	log.WithField("jobStatus", jobStatus).Info("Set job result")
 
