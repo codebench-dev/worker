@@ -18,9 +18,9 @@ import (
 )
 
 type benchJob struct {
-	ID      string `json:"id"`
-	Variant string `json:"variant"`
-	Code    string `json:"code"`
+	ID       string `json:"id"`
+	Language string `json:"language"`
+	Code     string `json:"code"`
 }
 
 type agentExecReq struct {
@@ -29,9 +29,10 @@ type agentExecReq struct {
 }
 
 type agentRunReq struct {
-	ID      string `json:"id"`
-	Variant string `json:"variant"`
-	Code    string `json:"code"`
+	ID       string `json:"id"`
+	Language string `json:"language"`
+	Code     string `json:"code"`
+	Variant  string `json:"variant"`
 }
 
 type agentExecRes struct {
