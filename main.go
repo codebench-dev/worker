@@ -36,6 +36,8 @@ type agentRunReq struct {
 }
 
 type agentExecRes struct {
+	Message      string `json:"message"`
+	Error        string `json:"error"`
 	StdErr       string `json:"stderr"`
 	StdOut       string `json:"stdout"`
 	ExecDuration int    `json:"exec_duration"`

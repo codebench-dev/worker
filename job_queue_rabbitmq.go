@@ -18,6 +18,8 @@ type jobQueue struct {
 type jobStatus struct {
 	ID           string `json:"id"`
 	Status       string `json:"status"`
+	Message      string `json:"message"`
+	Error        string `json:"error"`
 	StdErr       string `json:"stderr"`
 	StdOut       string `json:"stdout"`
 	ExecDuration int    `json:"exec_duration"`
@@ -101,13 +103,15 @@ func (q jobQueue) getQueueForJob(ctx context.Context) error {
 	)
 }
 
-func (q jobQueue) setjobStatus(ctx context.Context, job benchJob, status string) error {
+func (q jobQueue) setjobStatus(ctx context.Context, job benchJob, status string, res agentExecRes) error {
 	log.WithField("status", status).Info("Set job status")
 	jobStatus := &jobStatus{
-		ID:     job.ID,
-		Status: status,
-		StdErr: "",
-		StdOut: "",
+		ID:      job.ID,
+		Status:  status,
+		Message: res.Message,
+		Error:   res.Error,
+		StdErr:  "",
+		StdOut:  "",
 	}
 	b, err := json.Marshal(jobStatus)
 	if err != nil {
@@ -126,20 +130,22 @@ func (q jobQueue) setjobStatus(ctx context.Context, job benchJob, status string)
 }
 
 func (q jobQueue) setjobReceived(ctx context.Context, job benchJob) error {
-	return q.setjobStatus(ctx, job, "received")
+	return q.setjobStatus(ctx, job, "received", agentExecRes{})
 }
 
 func (q jobQueue) setjobRunning(ctx context.Context, job benchJob) error {
-	return q.setjobStatus(ctx, job, "running")
+	return q.setjobStatus(ctx, job, "running", agentExecRes{})
 }
 
-func (q jobQueue) setjobFailed(ctx context.Context, job benchJob) error {
-	return q.setjobStatus(ctx, job, "failed")
+func (q jobQueue) setjobFailed(ctx context.Context, job benchJob, res agentExecRes) error {
+	return q.setjobStatus(ctx, job, "failed", res)
 }
 func (q jobQueue) setjobResult(ctx context.Context, job benchJob, res agentExecRes) error {
 	jobStatus := &jobStatus{
 		ID:           job.ID,
 		Status:       "done",
+		Message:      res.Message,
+		Error:        res.Error,
 		StdErr:       res.StdErr,
 		StdOut:       res.StdOut,
 		ExecDuration: res.ExecDuration,

@@ -15,7 +15,7 @@ func (job benchJob) run(ctx context.Context, WarmVMs <-chan runningFirecracker) 
 	err := q.setjobReceived(ctx, job)
 	if err != nil {
 		log.WithError(err).Error("Could not set job received")
-		q.setjobFailed(ctx, job)
+		q.setjobFailed(ctx, job, agentExecRes{Error: err.Error()})
 		return
 	}
 
@@ -39,14 +39,14 @@ func (job benchJob) run(ctx context.Context, WarmVMs <-chan runningFirecracker) 
 	})
 	if err != nil {
 		log.WithError(err).Error("Failed to marshal JSON request")
-		q.setjobFailed(ctx, job)
+		q.setjobFailed(ctx, job, agentExecRes{Error: err.Error()})
 		return
 	}
 
 	err = q.setjobRunning(ctx, job)
 	if err != nil {
 		log.WithError(err).Error("Could not set job running")
-		q.setjobFailed(ctx, job)
+		q.setjobFailed(ctx, job, agentExecRes{Error: err.Error()})
 		return
 	}
 
@@ -57,7 +57,7 @@ func (job benchJob) run(ctx context.Context, WarmVMs <-chan runningFirecracker) 
 	httpRes, err = http.Post("http://"+vm.ip.String()+":8080/run", "application/json", bytes.NewBuffer(reqJSON))
 	if err != nil {
 		log.WithError(err).Error("Failed to request execution to agent")
-		q.setjobFailed(ctx, job)
+		q.setjobFailed(ctx, job, agentExecRes{Error: err.Error()})
 		return
 	}
 	json.NewDecoder(httpRes.Body).Decode(&agentRes)
@@ -68,13 +68,13 @@ func (job benchJob) run(ctx context.Context, WarmVMs <-chan runningFirecracker) 
 			"agentRes": agentRes,
 			"reqJSON":  string(reqJSON),
 		}).Error("Failed to compile and run code")
-		q.setjobFailed(ctx, job)
+		q.setjobFailed(ctx, job, agentRes)
 		return
 	}
 
 	err = q.setjobResult(ctx, job, agentRes)
 	if err != nil {
-		q.setjobFailed(ctx, job)
+		q.setjobFailed(ctx, job, agentExecRes{Error: err.Error()})
 	}
 
 }
