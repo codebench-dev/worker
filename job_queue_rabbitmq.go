@@ -23,6 +23,7 @@ type jobStatus struct {
 	StdErr       string `json:"stderr"`
 	StdOut       string `json:"stdout"`
 	ExecDuration int    `json:"exec_duration"`
+	MemUsage     int64  `json:"mem_usage"`
 }
 
 func newJobQueue(endpoint string) jobQueue {
@@ -149,6 +150,7 @@ func (q jobQueue) setjobResult(ctx context.Context, job benchJob, res agentExecR
 		StdErr:       res.StdErr,
 		StdOut:       res.StdOut,
 		ExecDuration: res.ExecDuration,
+		MemUsage:     res.MemUsage,
 	}
 	log.WithField("jobStatus", jobStatus).Info("Set job result")
 
