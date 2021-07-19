@@ -41,6 +41,7 @@ type agentExecRes struct {
 	StdErr       string `json:"stderr"`
 	StdOut       string `json:"stdout"`
 	ExecDuration int    `json:"exec_duration"`
+	MemUsage     int64  `json:"mem_usage"`
 }
 
 type runningFirecracker struct {
