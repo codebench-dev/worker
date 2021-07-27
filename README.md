@@ -37,20 +37,18 @@ In `/etc/cni/conf.d/fcnet.conflist`:
       }
     },
     {
-      "type": "firewall"
-    },
-    {
       "type": "tc-redirect-tap"
     }
   ]
 }
 ```
 
+If you want to disable the internet access of the micro VM, you can set `ipMasq` to `false`. This will disable the IP masquerade on the host for this network.
+
 You should also have the required CNI plugins binaries in `/opt/cni/bin`:
 
-From: https://github.com/awslabs/tc-redirect-tap
+From: https://github.com/containernetworking/plugins
 
-- firewall
 - host-local
 - ptp
 
