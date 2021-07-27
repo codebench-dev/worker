@@ -4,8 +4,10 @@ The worker handles lifecycle of an execution job.
 
 - Get jobs from a RabbitMQ queue
 - Keep a pool of microVMs warm, and send new jobs to pre-booted VM to reduce overhead
-- Run jobs trough the [agent](https://github.com/codebench-esgi/agent)
+- Run code execution jobs trough the [agent](https://github.com/codebench-esgi/agent)
 - Update back an ephemeral RabbitMQ queue for each job with status and result
+
+The worker uses [firecracker-go-sdk](https://github.com/firecracker-microvm/firecracker-go-sdk) to communicate with the microVMs.
 
 ## Requirements
 
