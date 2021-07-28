@@ -9,6 +9,8 @@ The worker handles lifecycle of an execution job.
 
 The worker uses [firecracker-go-sdk](https://github.com/firecracker-microvm/firecracker-go-sdk) to communicate with the microVMs.
 
+![](./assets/internals.png)
+
 ## Requirements
 
 - The `firecracker` binary in the `PATH`
