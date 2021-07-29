@@ -60,7 +60,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	WarmVMs := make(chan runningFirecracker, 1)
+	WarmVMs := make(chan runningFirecracker, 10)
 
 	go fillVMPool(ctx, WarmVMs)
 	installSignalHandlers()
