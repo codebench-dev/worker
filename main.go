@@ -47,6 +47,7 @@ type agentExecRes struct {
 type runningFirecracker struct {
 	vmmCtx    context.Context
 	vmmCancel context.CancelFunc
+	vmmID     string
 	machine   *firecracker.Machine
 	ip        net.IP
 }

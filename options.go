@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -12,9 +11,8 @@ import (
 	models "github.com/firecracker-microvm/firecracker-go-sdk/client/models"
 )
 
-// Converts options to a usable firecracker config
-func getFirecrackerConfig() (firecracker.Config, error) {
-	socket := getSocketPath()
+func getFirecrackerConfig(vmmID string) (firecracker.Config, error) {
+	socket := getSocketPath(vmmID)
 	return firecracker.Config{
 		SocketPath:      socket,
 		KernelImagePath: "../../linux/vmlinux",
@@ -22,7 +20,7 @@ func getFirecrackerConfig() (firecracker.Config, error) {
 		Drives: []models.Drive{{
 			DriveID: firecracker.String("1"),
 			// TODO: copy base rootfs and use a temp roots per VM
-			PathOnHost:   firecracker.String("../agent/rootfs.ext4"),
+			PathOnHost:   firecracker.String("/tmp/rootfs-" + vmmID + ".ext4"),
 			IsRootDevice: firecracker.Bool(true),
 			IsReadOnly:   firecracker.Bool(false),
 			RateLimiter: firecracker.NewRateLimiter(
@@ -54,11 +52,12 @@ func getFirecrackerConfig() (firecracker.Config, error) {
 	}, nil
 }
 
-func getSocketPath() string {
+func getSocketPath(vmmID string) string {
 	filename := strings.Join([]string{
 		".firecracker.sock",
 		strconv.Itoa(os.Getpid()),
-		strconv.Itoa(rand.Intn(10000))},
+		vmmID,
+	},
 		"-",
 	)
 	dir := os.TempDir()

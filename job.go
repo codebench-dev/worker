@@ -53,7 +53,6 @@ func (job benchJob) run(ctx context.Context, WarmVMs <-chan runningFirecracker) 
 	var httpRes *http.Response
 	var agentRes agentExecRes
 
-	// FIXME
 	httpRes, err = http.Post("http://"+vm.ip.String()+":8080/run", "application/json", bytes.NewBuffer(reqJSON))
 	if err != nil {
 		log.WithError(err).Error("Failed to request execution to agent")
@@ -76,5 +75,4 @@ func (job benchJob) run(ctx context.Context, WarmVMs <-chan runningFirecracker) 
 	if err != nil {
 		q.setjobFailed(ctx, job, agentExecRes{Error: err.Error()})
 	}
-
 }

@@ -161,3 +161,7 @@ Our C program has been successfully compiled and executed!
   "stdout": "Hello, World!"
 }
 ```
+
+## Known issues
+
+Cleanup when shutting down VMs does not work properly.

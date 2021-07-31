@@ -19,6 +19,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/imroc/req v0.3.0
 	github.com/mailru/easyjson v0.7.7 // indirect
+	github.com/rs/xid v1.3.0 // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/streadway/amqp v1.0.0
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indirect

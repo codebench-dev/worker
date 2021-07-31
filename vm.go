@@ -46,4 +46,8 @@ func (vm runningFirecracker) shutDown() {
 	if err != nil {
 		log.WithError(err).Error("Failed to delete firecracker socket")
 	}
+	err = os.Remove("/tmp/rootfs-" + vm.vmmID + ".ext4")
+	if err != nil {
+		log.WithError(err).Error("Failed to delete firecracker rootfs")
+	}
 }

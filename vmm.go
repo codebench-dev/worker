@@ -3,16 +3,31 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 
 	firecracker "github.com/firecracker-microvm/firecracker-go-sdk"
+	"github.com/rs/xid"
 	log "github.com/sirupsen/logrus"
 )
 
+func copy(src string, dst string) error {
+	data, err := ioutil.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(dst, data, 0644)
+	return err
+}
+
 // Create a VMM with a given set of options and start the VM
 func createAndStartVM(ctx context.Context) (*runningFirecracker, error) {
-	fcCfg, err := getFirecrackerConfig()
+	vmmID := xid.New().String()
+
+	copy("../agent/rootfs.ext4", "/tmp/rootfs-"+vmmID+".ext4")
+
+	fcCfg, err := getFirecrackerConfig(vmmID)
 	if err != nil {
 		log.Errorf("Error: %s", err)
 		return nil, err
@@ -78,6 +93,7 @@ func createAndStartVM(ctx context.Context) (*runningFirecracker, error) {
 	return &runningFirecracker{
 		vmmCtx:    vmmCtx,
 		vmmCancel: vmmCancel,
+		vmmID:     vmmID,
 		machine:   m,
 		ip:        m.Cfg.NetworkInterfaces[0].StaticConfiguration.IPConfiguration.IPAddr.IP,
 	}, nil
