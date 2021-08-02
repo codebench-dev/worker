@@ -18,8 +18,7 @@ func getFirecrackerConfig(vmmID string) (firecracker.Config, error) {
 		KernelImagePath: "../../linux/vmlinux",
 		LogPath:         fmt.Sprintf("%s.log", socket),
 		Drives: []models.Drive{{
-			DriveID: firecracker.String("1"),
-			// TODO: copy base rootfs and use a temp roots per VM
+			DriveID:      firecracker.String("1"),
 			PathOnHost:   firecracker.String("/tmp/rootfs-" + vmmID + ".ext4"),
 			IsRootDevice: firecracker.Bool(true),
 			IsReadOnly:   firecracker.Bool(false),
