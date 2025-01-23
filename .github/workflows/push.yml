@@ -40,26 +40,26 @@ jobs:
       - name: Lint Commit
         uses: wagoid/commitlint-github-action@v3
 
-  release:
-    name: Publish new release
-    needs: [build, lint, commitlint]
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: build
-          path: .
-      - name: Create release archive
-        run: tar -czvf release.tar.gz worker README.md LICENSE
-      - name: Setup Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: 20
-      - name: Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: npx semantic-release
+  # release:
+  #   name: Publish new release
+  #   needs: [build, lint, commitlint]
+  #   if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v2
+  #     - name: Download build artifact
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: build
+  #         path: .
+  #     - name: Create release archive
+  #       run: tar -czvf release.tar.gz worker README.md LICENSE
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v2
+  #       with:
+  #         node-version: 20
+  #     - name: Release
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+  #       run: npx semantic-release
